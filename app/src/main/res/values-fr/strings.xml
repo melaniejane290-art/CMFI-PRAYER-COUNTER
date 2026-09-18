@@ -1,0 +1,98 @@
+<resources>
+    <string name="app_name">Proclamation Prière</string>
+    <string name="app_title">Compteur de Proclamations</string>
+    <string name="splash_subtitle">Proclamez. Persévérez. Triomphez.</string>
+    <string name="splash_title_proclamation">PROCLAMATION DE PRIÈRE</string>
+    <string name="splash_title_counter">COMPTEUR</string>
+    <string name="splash_verse">« La mort et la vie sont au pouvoir de la langue »\n— Proverbes 18:21</string>
+    <string name="btn_start_counter">COMMENCER LA PRIÈRE</string>
+    
+    <string name="enter_prayer_topic">SUJET DE PRIÈRE / PROCLAMATION</string>
+    <string name="prayer_topic_hint">ex. Jésus-Christ est Seigneur</string>
+    <string name="default_topic">Jésus-Christ est Seigneur</string>
+    <string name="target_label">OBJECTIF DE PROCLAMATIONS</string>
+    <string name="target_proclamations_suffix">proclamations</string>
+    <string name="target_hint">ex. 1000</string>
+    <string name="current_count_label">COMPTE ACTUEL</string>
+    <string name="progress_label">Progression</string>
+    <string name="session_timer_label">Chronomètre</string>
+    <string name="target_ratio_prefix">Objectif : </string>
+    <string name="saved_base_label">Base enregistrée</string>
+    <string name="this_session_label">Cette session</string>
+    
+    <string name="status_praying">EN PRIÈRE</string>
+    <string name="status_paused">SESSION EN PAUSE</string>
+    <string name="status_target_achieved">OBJECTIF ATTEINT</string>
+    
+    <string name="btn_count_plus_one">COMPTER +1</string>
+    <string name="btn_start">DÉMARRER</string>
+    <string name="btn_pause">PAUSE</string>
+    <string name="btn_save">ENREGISTRER</string>
+    <string name="btn_reset_session">RÉINITIALISER LA SESSION</string>
+    
+    <string name="session_controls_title">CONTRÔLES DE LA SESSION</string>
+    
+    <string name="dialog_reset_title">Réinitialiser la session en cours ?</string>
+    <string name="dialog_reset_message">Cela réinitialisera le chronomètre de la session et le compte de session (+%1$d) à zéro.\n\nVotre total cumulé sauvegardé (%2$d) NE SERA PAS supprimé.</string>
+    <string name="dialog_btn_reset">Réinitialiser la session</string>
+    <string name="dialog_btn_cancel">Annuler</string>
+    
+    <string name="session_saved_msg">Progression de la session enregistrée avec succès !</string>
+    <string name="session_saved_detail">+%1$d proclamations enregistrées (Session : %2$s). Total : %3$d / %4$d</string>
+    <string name="session_saved_no_increment">Progression enregistrée. Total : %1$d / %2$d</string>
+    <string name="session_reset_msg">Chronomètre et compte de session réinitialisés. Total cumulé (%1$d) préservé.</string>
+    <string name="target_reached_msg">Objectif atteint ! Alléluia !</string>
+    <string name="quick_targets">Objectifs rapides</string>
+    <string name="active_session">Session de prière active</string>
+    
+    <string name="language_english">English</string>
+    <string name="language_french">Français</string>
+    <string name="language_selector_title">Langue / Language</string>
+    
+    <!-- Phase 2: Proclamations Enregistrées -->
+    <string name="tab_counter">Compteur</string>
+    <string name="tab_saved">Proclamations</string>
+    <string name="saved_proclamations_title">Proclamations Enregistrées</string>
+    <string name="saved_proclamations_subtitle">Vos étapes spirituelles et bilans de prière</string>
+    <string name="saved_total_proclamations">Proclamations Totales</string>
+    <string name="saved_total_sessions">Sessions Enregistrées</string>
+    <string name="saved_total_time">Temps en Prière</string>
+    <string name="empty_saved_title">Aucune proclamation enregistrée</string>
+    <string name="empty_saved_desc">Effectuez des temps de prière sur le compteur et appuyez sur Enregistrer pour archiver vos proclamations ici.</string>
+    <string name="search_proclamations_hint">Rechercher par sujet de proclamation…</string>
+    <string name="delete_proclamation_confirm_title">Supprimer la proclamation ?</string>
+    <string name="delete_proclamation_confirm_msg">Êtes-vous certain de vouloir supprimer cet enregistrement de proclamation ?</string>
+    <string name="btn_delete">Supprimer</string>
+    <string name="btn_resume_in_counter">Reprendre dans le compteur</string>
+    <string name="btn_add_note">Ajouter une note</string>
+    <string name="dialog_note_title">Notes de Proclamation</string>
+    <string name="dialog_note_hint">Ajouter des réflexions, versets bibliques ou témoignages…</string>
+    <string name="btn_save_note">Enregistrer la note</string>
+    <string name="filter_all">Toutes</string>
+    <string name="filter_completed">Objectif atteint</string>
+    
+    <!-- Phase 3: Historique des Sessions de Prière -->
+    <string name="tab_history">Historique</string>
+    <string name="history_title">Historique des Prières</string>
+    <string name="history_subtitle">Journaux chronologiques, cadence et séries de dévotion</string>
+    <string name="history_streak_title">Série Quotidienne</string>
+    <string name="history_streak_label">Jours consécutifs</string>
+    <string name="history_weekly_trends">Activité de Prière Hebdomadaire</string>
+    <string name="history_filter_all">Tout</string>
+    <string name="history_filter_today">Aujourd\'hui</string>
+    <string name="history_filter_week">Cette semaine</string>
+    <string name="history_filter_month">Ce mois-ci</string>
+    <string name="history_empty_title">Aucun historique de prière</string>
+    <string name="history_empty_desc">Priez sur l\'onglet Compteur puis appuyez sur Enregistrer. Chaque session sera archivée ici avec durée, horodatage et rythme.</string>
+    <string name="history_pace_label">Rythme</string>
+    <string name="history_duration_label">Durée</string>
+    <string name="history_btn_share">Partager le bilan</string>
+    <string name="history_clear_all">Effacer l\'historique</string>
+    <string name="history_clear_confirm_title">Effacer tout l\'historique ?</string>
+    <string name="history_clear_confirm_msg">Êtes-vous certain de vouloir supprimer tout l\'historique de vos sessions de prière ? Cette action est irréversible.</string>
+    <string name="history_delete_single_title">Supprimer la session ?</string>
+    <string name="history_delete_single_msg">Êtes-vous certain de vouloir supprimer cette session ?</string>
+    <string name="history_average_pace">Rythme moy.</string>
+    <string name="history_total_time">Temps total</string>
+    <string name="history_total_sessions">Sessions</string>
+</resources>

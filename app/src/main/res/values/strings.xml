@@ -1,0 +1,98 @@
+<resources>
+    <string name="app_name">Prayer Proclamation</string>
+    <string name="app_title">Prayer Proclamation Counter</string>
+    <string name="splash_subtitle">Proclaim. Persevere. Prevail.</string>
+    <string name="splash_title_proclamation">PRAYER PROCLAMATION</string>
+    <string name="splash_title_counter">COUNTER</string>
+    <string name="splash_verse">“Death and life are in the power of the tongue”\n— Proverbs 18:21</string>
+    <string name="btn_start_counter">START PRAYER COUNTER</string>
+    
+    <string name="enter_prayer_topic">PRAYER TOPIC / PROCLAMATION</string>
+    <string name="prayer_topic_hint">e.g. Jesus Christ is the Lord</string>
+    <string name="default_topic">Jesus Christ is the Lord</string>
+    <string name="target_label">TARGET PROCLAMATIONS</string>
+    <string name="target_proclamations_suffix">proclamations</string>
+    <string name="target_hint">e.g. 1000</string>
+    <string name="current_count_label">CURRENT COUNT</string>
+    <string name="progress_label">Progress</string>
+    <string name="session_timer_label">Session Timer</string>
+    <string name="target_ratio_prefix">Target: </string>
+    <string name="saved_base_label">Saved Base</string>
+    <string name="this_session_label">This Session</string>
+    
+    <string name="status_praying">PRAYING NOW</string>
+    <string name="status_paused">SESSION PAUSED</string>
+    <string name="status_target_achieved">TARGET ACHIEVED</string>
+    
+    <string name="btn_count_plus_one">COUNT +1</string>
+    <string name="btn_start">START</string>
+    <string name="btn_pause">PAUSE</string>
+    <string name="btn_save">SAVE</string>
+    <string name="btn_reset_session">RESET SESSION</string>
+    
+    <string name="session_controls_title">SESSION CONTROLS</string>
+    
+    <string name="dialog_reset_title">Reset Current Session?</string>
+    <string name="dialog_reset_message">This will reset the current session timer and session count (+%1$d) back to zero.\n\nYour saved cumulative proclamation count (%2$d) will NOT be deleted.</string>
+    <string name="dialog_btn_reset">Reset Session</string>
+    <string name="dialog_btn_cancel">Cancel</string>
+    
+    <string name="session_saved_msg">Session progress saved successfully!</string>
+    <string name="session_saved_detail">Saved +%1$d proclamations (Session: %2$s). Total: %3$d / %4$d</string>
+    <string name="session_saved_no_increment">Current progress saved. Total: %1$d / %2$d</string>
+    <string name="session_reset_msg">Session timer and session count reset. Cumulative count (%1$d) preserved.</string>
+    <string name="target_reached_msg">Target reached! Hallelujah!</string>
+    <string name="quick_targets">Quick Targets</string>
+    <string name="active_session">Active Prayer Session</string>
+    
+    <string name="language_english">English</string>
+    <string name="language_french">Français</string>
+    <string name="language_selector_title">Language / Langue</string>
+    
+    <!-- Phase 2: Saved Proclamations -->
+    <string name="tab_counter">Counter</string>
+    <string name="tab_saved">Saved Proclamations</string>
+    <string name="saved_proclamations_title">Saved Proclamations</string>
+    <string name="saved_proclamations_subtitle">Your spiritual prayer milestones and records</string>
+    <string name="saved_total_proclamations">Total Proclamations</string>
+    <string name="saved_total_sessions">Saved Sessions</string>
+    <string name="saved_total_time">Time in Prayer</string>
+    <string name="empty_saved_title">No Saved Proclamations Yet</string>
+    <string name="empty_saved_desc">Complete prayer sessions on the Counter tab and tap Save to record your spiritual proclamations here.</string>
+    <string name="search_proclamations_hint">Search proclamations by topic…</string>
+    <string name="delete_proclamation_confirm_title">Delete Saved Proclamation?</string>
+    <string name="delete_proclamation_confirm_msg">Are you sure you want to delete this proclamation record?</string>
+    <string name="btn_delete">Delete</string>
+    <string name="btn_resume_in_counter">Resume in Counter</string>
+    <string name="btn_add_note">Add Note</string>
+    <string name="dialog_note_title">Prayer Proclamation Notes</string>
+    <string name="dialog_note_hint">Add reflections, scripture references, or testimonies…</string>
+    <string name="btn_save_note">Save Note</string>
+    <string name="filter_all">All</string>
+    <string name="filter_completed">Completed Target</string>
+    
+    <!-- Phase 3: Prayer Session History -->
+    <string name="tab_history">History</string>
+    <string name="history_title">Prayer Session History</string>
+    <string name="history_subtitle">Chronological prayer logs, pace, and devotion streaks</string>
+    <string name="history_streak_title">Daily Streak</string>
+    <string name="history_streak_label">Consecutive Days</string>
+    <string name="history_weekly_trends">Weekly Prayer Activity</string>
+    <string name="history_filter_all">All Time</string>
+    <string name="history_filter_today">Today</string>
+    <string name="history_filter_week">This Week</string>
+    <string name="history_filter_month">This Month</string>
+    <string name="history_empty_title">No Prayer History Yet</string>
+    <string name="history_empty_desc">Start praying on the Counter tab and tap Save. Every prayer session will be logged here with timestamps, duration, and cadence.</string>
+    <string name="history_pace_label">Pace</string>
+    <string name="history_duration_label">Duration</string>
+    <string name="history_btn_share">Share Report</string>
+    <string name="history_clear_all">Clear History</string>
+    <string name="history_clear_confirm_title">Clear All Prayer History?</string>
+    <string name="history_clear_confirm_msg">Are you sure you want to clear all prayer session history logs? This action cannot be undone.</string>
+    <string name="history_delete_single_title">Delete Session Log?</string>
+    <string name="history_delete_single_msg">Are you sure you want to delete this session log?</string>
+    <string name="history_average_pace">Avg Pace</string>
+    <string name="history_total_time">Total Time</string>
+    <string name="history_total_sessions">Sessions</string>
+</resources>

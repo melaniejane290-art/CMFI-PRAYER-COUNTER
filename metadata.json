@@ -1,0 +1,7 @@
+{
+  "name": "Prayer Proclamation",
+  "description": "A peaceful, focused prayer proclamation counter with real-time Firestore sync, Admin Dashboard, broadcast notification center, and lifetime spiritual milestones.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
