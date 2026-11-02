@@ -19,7 +19,7 @@ android {
     targetSdk = 36
     // Injected by the store workflow; Play rejects a versionCode it has already seen.
     versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
-    versionName = System.getenv("VERSION_NAME")?.takeIf { it.isNotBlank() } ?: "1.0"
+    versionName = System.getenv("VERSION_NAME")?.takeIf { it.isNotBlank() } ?: "1.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

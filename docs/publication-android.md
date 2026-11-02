@@ -11,14 +11,13 @@ La version iOS est un projet séparé : voir `docs/publication-ios.md`.
 
 ### 1. Récupérer la clé du build déjà déposé
 
-Le package `cmfi.prayercounter.org` a déjà un build sur Play : tout nouveau
-build doit être signé avec **la même clé de téléversement**. Si elle est perdue,
+Le package `cmfi.prayercounter.org` est déjà en production sur Play (1.1, code 2) :
+tout nouveau build doit être signé avec **la même clé de téléversement**. Si elle est perdue,
 demander sa réinitialisation dans la Play Console (*Intégrité de l'application >
 Signature de l'application*), puis utiliser la nouvelle clé de l'étape 3.
 
-Le premier build a déjà pris un `versionCode` : tant que
-`PLAY_SERVICE_ACCOUNT_JSON` n'est pas renseigné, saisir `build_number` à la main,
-au-dessus de ce que Play affiche.
+Tant que `PLAY_SERVICE_ACCOUNT_JSON` n'est pas renseigné, saisir `build_number`
+à la main, à partir de 3.
 
 ### 2. Créer le projet Firebase
 
@@ -65,22 +64,12 @@ Encoder et enregistrer la clé, en PowerShell :
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("prayer-upload.jks")) | gh secret set ANDROID_KEYSTORE_BASE64 --repo melaniejane290-art/CMFI-PRAYER-COUNTER
 ```
 
-### 5. Créer l'application sur Play
-
-1. Créer l'application dans la Play Console (voir `docs/play-store-listing.md`).
-2. Lancer le workflow sans cocher `publish`, puis téléverser à la main le premier
-   AAB de la release GitHub sur la piste de test interne.
-3. Pour l'envoi automatique : inviter le compte de service dans *Utilisateurs et
-   autorisations*, limité à cette application et à « Publier sur les pistes de
-   test », jamais la production.
-
 ## À chaque version
 
 1. *Actions > Build Android (APK + AAB Play Store) > Run workflow*.
 2. Renseigner `version_name`. Laisser `build_number` vide : le versionCode est
    calculé pour rester au-dessus de ce que Play a déjà reçu.
-3. Cocher `publish` pour envoyer sur la piste interne. Garder `play_status` à
-   `draft` tant que l'application n'a jamais été publiée, puis passer à `completed`.
+3. Cocher `publish` pour envoyer sur la piste interne.
 4. Récupérer l'AAB et l'APK dans la release `android-v<version>-<code>`.
 5. Promouvoir vers la production depuis la Play Console.
 

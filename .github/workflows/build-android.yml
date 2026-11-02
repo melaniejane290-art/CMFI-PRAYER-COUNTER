@@ -9,9 +9,7 @@ name: Build Android (APK + AAB Play Store)
 #
 # ENVOI SUR GOOGLE PLAY : piste INTERNE seulement, et seulement si « publish »
 # est coché. La production reste un geste humain dans la Play Console.
-# Tant que l'application n'a jamais été publiée, Play n'accepte que le statut
-# « draft » : garder ce défaut, puis passer à « completed » après la première
-# publication. Voir docs/publication-android.md.
+# Voir docs/publication-android.md.
 #
 # Secrets requis : voir docs/publication-android.md. Le dépôt étant public,
 # google-services.json n'y est pas versionné : il vient d'un secret.
@@ -34,12 +32,12 @@ on:
         type: boolean
         default: false
       play_status:
-        description: "Statut de la version sur Play (draft tant que l'app n'est pas publiée)"
+        description: "Statut de la version sur la piste interne"
         type: choice
         options:
-          - draft
           - completed
-        default: draft
+          - draft
+        default: completed
 
 concurrency:
   group: build-android
