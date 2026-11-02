@@ -16,3 +16,14 @@
 local.properties
 .env
 debug.keystore
+*.jks
+*.keystore
+key.properties
+google-services.json
+*.aab
+*.apk
+*.ipa
+*.p8
+/ios/PrayerCounter.xcodeproj
+/ios/PrayerCounter/Info.plist
+/ios/build

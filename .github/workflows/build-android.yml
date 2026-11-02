@@ -1,0 +1,220 @@
+name: Build Android (APK + AAB Play Store)
+
+# Déclenchement manuel depuis l'onglet « Actions ». Même chaîne que WiNet :
+# construit dans le cloud (aucune RAM locale nécessaire), signé avec la clé de
+# téléversement, livré en release GitHub, et envoyé sur Play si on le demande.
+#
+#   • APK : installation directe sur un téléphone.
+#   • AAB : le format exigé par Google Play.
+#
+# ENVOI SUR GOOGLE PLAY : piste INTERNE seulement, et seulement si « publish »
+# est coché. La production reste un geste humain dans la Play Console.
+# Tant que l'application n'a jamais été publiée, Play n'accepte que le statut
+# « draft » : garder ce défaut, puis passer à « completed » après la première
+# publication. Voir docs/publication-android.md.
+#
+# Secrets requis : voir docs/publication-android.md. Le dépôt étant public,
+# google-services.json n'y est pas versionné : il vient d'un secret.
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: "versionCode Play (STRICTEMENT croissant). Vide = calculé automatiquement."
+        required: false
+        default: ""
+      version_name:
+        description: "versionName affiché (ex. 1.1.0). Vide = celui de app/build.gradle.kts."
+        required: false
+        default: ""
+      publish:
+        description: "Envoyer l'AAB sur Google Play (piste interne)"
+        type: boolean
+        default: false
+      play_status:
+        description: "Statut de la version sur Play (draft tant que l'app n'est pas publiée)"
+        type: choice
+        options:
+          - draft
+          - completed
+        default: draft
+
+concurrency:
+  group: build-android
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      # Le contexte `secrets` n'est pas lisible dans le `if` d'une étape ; une
+      # variable de job l'est.
+      PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+      INPUT_BUILD_NUMBER: ${{ inputs.build_number }}
+      INPUT_VERSION_NAME: ${{ inputs.version_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sans clé, on obtiendrait un binaire refusé par Play : mieux vaut
+      # s'arrêter tout de suite. Sans Firebase, l'application tourne en local.
+      - name: Exiger les secrets de publication
+        run: |
+          for name in ANDROID_KEYSTORE_BASE64 STORE_PASSWORD KEY_PASSWORD KEY_ALIAS; do
+            test -n "${!name}" || { echo "::error::Secret manquant pour $name (voir docs/publication-android.md)"; exit 1; }
+          done
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::warning::GOOGLE_SERVICES_JSON absent : connexion Google et synchronisation inactives dans ce build."
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Installer la clé et la configuration Firebase
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          fi
+
+      # Une seule source pour le package : app/build.gradle.kts.
+      - name: Lire le package
+        run: |
+          PACKAGE=$(grep -oP 'applicationId = "\K[^"]+' app/build.gradle.kts)
+          test -n "$PACKAGE"
+          echo "PACKAGE=$PACKAGE" >> "$GITHUB_ENV"
+          echo "Package : $PACKAGE"
+
+      - name: Numéro de version, lu sur Play
+        if: ${{ env.PLAY_JSON != '' && inputs.build_number == '' }}
+        run: |
+          printf '%s' "$PLAY_JSON" > "$RUNNER_TEMP/play.json"
+          pip install --quiet google-api-python-client google-auth
+          python3 - <<'PY'
+          import os
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+
+          PAQUET = os.environ['PACKAGE']
+          creds = service_account.Credentials.from_service_account_file(
+              os.path.join(os.environ['RUNNER_TEMP'], 'play.json'),
+              scopes=['https://www.googleapis.com/auth/androidpublisher'])
+          api = build('androidpublisher', 'v3', credentials=creds,
+                      cache_discovery=False)
+          edit = api.edits().insert(packageName=PAQUET, body={}).execute()['id']
+          plus_haut = 0
+          try:
+              for ressource, cle in ((api.edits().bundles(), 'bundles'),
+                                     (api.edits().apks(), 'apks')):
+                  for item in ressource.list(packageName=PAQUET,
+                                             editId=edit).execute().get(cle, []):
+                      plus_haut = max(plus_haut, int(item['versionCode']))
+          finally:
+              # Édition ouverte pour LIRE seulement : la laisser bloquerait la suivante.
+              api.edits().delete(packageName=PAQUET, editId=edit).execute()
+          print('Plus haut versionCode déposé sur Play :', plus_haut)
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
+              print('PLAY_NEXT_CODE=%d' % (plus_haut + 1), file=f)
+          PY
+          rm -f "$RUNNER_TEMP/play.json"
+
+      # Numéro saisi à la main : prioritaire. Sinon le numéro de run, qui ne
+      # redescend jamais, et jamais en dessous de ce que Play a déjà reçu.
+      - name: Fixer la version
+        run: |
+          BUILD_NAME="$INPUT_VERSION_NAME"
+          [ -z "$BUILD_NAME" ] && BUILD_NAME=$(grep -oP 'VERSION_NAME".*\?: "\K[^"]+' app/build.gradle.kts)
+          BUILD_NUMBER="$INPUT_BUILD_NUMBER"
+          if [ -z "$BUILD_NUMBER" ]; then
+            BUILD_NUMBER="$GITHUB_RUN_NUMBER"
+            if [ "${PLAY_NEXT_CODE:-0}" -gt "$BUILD_NUMBER" ]; then
+              BUILD_NUMBER="$PLAY_NEXT_CODE"
+            fi
+          fi
+          echo "versionName=$BUILD_NAME versionCode=$BUILD_NUMBER"
+          {
+            echo "BUILD_NAME=$BUILD_NAME"
+            echo "BUILD_NUMBER=$BUILD_NUMBER"
+            echo "VERSION_NAME=$BUILD_NAME"
+            echo "VERSION_CODE=$BUILD_NUMBER"
+          } >> "$GITHUB_ENV"
+
+      - name: Construire l'APK et l'AAB
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+
+      - name: Vérifier la signature de l'APK
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs \
+            app/build/outputs/apk/release/app-release.apk | tee signature.txt
+          if grep -q "CN=Android Debug" signature.txt; then
+            echo "::error::Artefact signé avec la clé de debug."
+            exit 1
+          fi
+
+      # L'AAB n'est pas un APK : apksigner ne le lit pas. On vérifie la
+      # signature JAR du bundle. Ses empreintes servent aussi à Firebase.
+      - name: Vérifier la signature de l'AAB
+        run: |
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          ls -la "$AAB"
+          keytool -printcert -jarfile "$AAB" | tee signature-aab.txt
+          if grep -q "CN=Android Debug" signature-aab.txt; then
+            echo "::error::AAB signé avec la clé de debug."
+            exit 1
+          fi
+
+      # Livraison PRINCIPALE : une release GitHub, hors quota d'artefacts Actions.
+      # `--clobber` rend l'étape rejouable.
+      - name: Publier en release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-v${BUILD_NAME}-${BUILD_NUMBER}"
+          cp app/build/outputs/bundle/release/app-release.aab "prayer-counter-${BUILD_NUMBER}.aab"
+          cp app/build/outputs/apk/release/app-release.apk "prayer-counter-${BUILD_NUMBER}.apk"
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" \
+                 --title "Prayer Counter ${BUILD_NAME} (build ${BUILD_NUMBER})" \
+                 --notes "AAB pour Google Play + APK pour installation directe. Signés avec la clé de téléversement." \
+                 --prerelease \
+                 --target "$GITHUB_SHA"
+          gh release upload "$TAG" \
+            "prayer-counter-${BUILD_NUMBER}.aab" \
+            "prayer-counter-${BUILD_NUMBER}.apk" \
+            --clobber
+
+      # Piste INTERNE seulement : rien ici ne vise `production`.
+      - name: Envoi sur Play (piste interne)
+        if: ${{ inputs.publish && env.PLAY_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.PACKAGE }}
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: ${{ inputs.play_status }}
+
+      - name: Envoi demandé mais non configuré
+        if: ${{ inputs.publish && env.PLAY_JSON == '' }}
+        run: |
+          echo "::warning::Envoi sur Play demandé mais PLAY_SERVICE_ACCOUNT_JSON" \
+               "est absent : l'AAB reste disponible dans la release GitHub."
+
+      - name: Effacer la clé
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" "$RUNNER_TEMP/play.json" app/google-services.json

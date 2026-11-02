@@ -217,6 +217,27 @@ class FirestoreRepository(
         }
     }
 
+    /**
+     * Deletes the user's document and synced prayer data. Must run before the
+     * Firebase account itself is deleted, while the user is still authenticated.
+     */
+    suspend fun deleteUserData(uid: String): Result<Unit> {
+        val firestore = getFirestore() ?: return Result.failure(Exception("Firestore not initialized."))
+        if (uid.isBlank()) return Result.failure(Exception("Not signed in."))
+
+        return try {
+            val userDoc = firestore.collection(COLLECTION_USERS).document(uid)
+            for (subcollection in listOf(COLLECTION_SESSIONS, COLLECTION_PROCLAMATIONS)) {
+                userDoc.collection(subcollection).get().await().documents.forEach { it.reference.delete().await() }
+            }
+            userDoc.delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting user data", e)
+            Result.failure(e)
+        }
+    }
+
     // -------------------------------------------------------------------------
     // PHASE 15: Admin Broadcast Notifications
     // -------------------------------------------------------------------------

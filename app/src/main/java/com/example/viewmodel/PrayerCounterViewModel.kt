@@ -874,6 +874,42 @@ class PrayerCounterViewModel @JvmOverloads constructor(
                 successMessage = if (isFr) "Déconnexion réussie." else "Signed out successfully."
             )
         }
+        _isAdminUnlocked.value = false
+    }
+
+    /**
+     * Permanently deletes the account with its cloud and local prayer data.
+     * Reports the outcome through [onResult]: null on success, otherwise the message to show.
+     */
+    fun deleteAccount(onResult: (String?) -> Unit) {
+        val isFr = _uiState.value.language == AppLanguage.FRENCH
+        val uid = authUser.value?.uid
+        viewModelScope.launch {
+            // Local-only accounts have nothing in the cloud; a failure here must not block them.
+            val firebaseUid = runCatching { com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid }.getOrNull()
+            if (firebaseUid != null && firebaseUid == uid) {
+                firestoreRepository.deleteUserData(firebaseUid).onFailure {
+                    onResult(if (isFr) "Suppression impossible. Vérifiez votre connexion et réessayez." else "Could not delete your data. Check your connection and try again.")
+                    return@launch
+                }
+            }
+            authRepository.deleteCurrentAccount().onFailure { error ->
+                val recentLoginNeeded = error is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
+                onResult(
+                    when {
+                        recentLoginNeeded && isFr -> "Par sécurité, déconnectez-vous, reconnectez-vous, puis réessayez."
+                        recentLoginNeeded -> "For security, sign out, sign in again, then retry."
+                        isFr -> "Suppression impossible. Vérifiez votre connexion et réessayez."
+                        else -> "Could not delete your account. Check your connection and try again."
+                    }
+                )
+                return@launch
+            }
+            repository.clearAllProclamations()
+            repository.clearAllSessionHistory()
+            _isAdminUnlocked.value = false
+            onResult(null)
+        }
     }
 
     private fun formatAuthError(error: Throwable, isFr: Boolean): String {
@@ -1011,30 +1047,9 @@ class PrayerCounterViewModel @JvmOverloads constructor(
      * Checks if current signed-in user has admin privileges and unlocks admin mode if true.
      */
     fun checkAdminAccess(): Boolean {
-        val user = authUser.value
-        val hasAdminRole = user?.isAdmin == true ||
-                user?.email?.equals("melaniejane290@gmail.com", ignoreCase = true) == true
-        if (hasAdminRole) {
-            _isAdminUnlocked.value = true
-        }
+        val hasAdminRole = authUser.value?.isAdmin == true
+        _isAdminUnlocked.value = hasAdminRole
         return hasAdminRole
-    }
-
-    /**
-     * Unlocks Admin portal using passcode or account role check.
-     */
-    fun unlockAdminMode(passcode: String): Boolean {
-        val trimmed = passcode.trim()
-        val isValidPasscode = trimmed.equals("ADMIN", ignoreCase = true) ||
-                trimmed.equals("PRAYER2026", ignoreCase = true) ||
-                trimmed == "1234" ||
-                trimmed == "777" ||
-                authUser.value?.isAdmin == true
-
-        if (isValidPasscode) {
-            _isAdminUnlocked.value = true
-        }
-        return isValidPasscode
     }
 
     fun setAdminUnlocked(unlocked: Boolean) {
@@ -1079,9 +1094,6 @@ class PrayerCounterViewModel @JvmOverloads constructor(
     fun updateDevoteeRole(userId: String, newRole: String) {
         viewModelScope.launch {
             firestoreRepository.updateDevoteeRole(userId, newRole)
-            try {
-                com.example.PrayerApplication.instance.localAccountStore.updateUserRole(userId, newRole)
-            } catch (_: Exception) {}
             loadDevotees()
         }
     }

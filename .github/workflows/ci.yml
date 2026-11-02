@@ -1,0 +1,52 @@
+name: CI
+
+# Vérifie que les deux applications compilent, sans aucun secret : la version
+# debug Android tourne sans clé ni google-services.json, et le build iOS vise
+# le simulateur, sans signature.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compiler et tester
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleDebug :app:testDebugUnitTest
+
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios
+    env:
+      BUILD_NUMBER: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          recent=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$recent/Contents/Developer"
+          xcodebuild -version
+      - name: Générer le projet
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Compiler pour le simulateur
+        run: |
+          xcodebuild -project PrayerCounter.xcodeproj -scheme PrayerCounter \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build

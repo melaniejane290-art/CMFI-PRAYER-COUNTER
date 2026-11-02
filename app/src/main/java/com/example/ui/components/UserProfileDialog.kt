@@ -89,9 +89,9 @@ fun UserProfileDialog(
 
     val isFr = state.language == AppLanguage.FRENCH
     var showSignOutConfirm by remember { mutableStateOf(false) }
-    var showAdminPasscodeDialog by remember { mutableStateOf(false) }
-    var adminPasscodeInput by remember { mutableStateOf("") }
-    var adminPasscodeError by remember { mutableStateOf(false) }
+    var showDeleteAccountConfirm by remember { mutableStateOf(false) }
+    var isDeletingAccount by remember { mutableStateOf(false) }
+    var deleteAccountError by remember { mutableStateOf<String?>(null) }
 
     val formattedTotalTime = remember(totalDuration) {
         val totalSec = totalDuration ?: 0L
@@ -396,42 +396,40 @@ fun UserProfileDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Admin Dashboard Entry Button
-                Button(
-                    onClick = {
-                        if (user.isAdmin || viewModel.isAdminUnlocked.value) {
+                if (user.isAdmin) {
+                    Button(
+                        onClick = {
                             onDismissRequest()
                             onOpenAdminDashboard()
-                        } else {
-                            showAdminPasscodeDialog = true
-                        }
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DeepNavy,
-                        contentColor = SoftGold
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("btn_open_admin_dashboard")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = "Admin Dashboard",
-                        tint = SoftGold,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isFr) "Tableau de Bord Admin" else "Admin Dashboard",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = SoftGold
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DeepNavy,
+                            contentColor = SoftGold
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("btn_open_admin_dashboard")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = "Admin Dashboard",
+                            tint = SoftGold,
+                            modifier = Modifier.size(18.dp)
                         )
-                    )
-                }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isFr) "Tableau de Bord Admin" else "Admin Dashboard",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = SoftGold
+                            )
+                        )
+                    }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
                 // Sign Out Button
                 OutlinedButton(
@@ -462,21 +460,31 @@ fun UserProfileDialog(
                         )
                     )
                 }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                TextButton(
+                    onClick = {
+                        deleteAccountError = null
+                        showDeleteAccountConfirm = true
+                    },
+                    modifier = Modifier.testTag("btn_delete_account")
+                ) {
+                    Text(
+                        text = if (isFr) "Supprimer mon compte" else "Delete my account",
+                        style = MaterialTheme.typography.labelMedium.copy(color = TextMuted)
+                    )
+                }
             }
         }
     }
 
-    // Admin Passcode Dialog (for quick admin authentication)
-    if (showAdminPasscodeDialog) {
+    if (showDeleteAccountConfirm) {
         AlertDialog(
-            onDismissRequest = {
-                showAdminPasscodeDialog = false
-                adminPasscodeError = false
-                adminPasscodeInput = ""
-            },
+            onDismissRequest = { if (!isDeletingAccount) showDeleteAccountConfirm = false },
             title = {
                 Text(
-                    text = if (isFr) "🔐 Accès Administrateur" else "🔐 Admin Access",
+                    text = if (isFr) "Supprimer votre compte ?" else "Delete your account?",
                     fontWeight = FontWeight.Bold,
                     color = DeepNavy
                 )
@@ -484,25 +492,17 @@ fun UserProfileDialog(
             text = {
                 Column {
                     Text(
-                        text = if (isFr) "Saisissez le mot de passe administrateur pour accéder à la gestion globale :" else "Enter administrator passcode to access live ministry controls:",
+                        text = if (isFr) {
+                            "Votre compte, vos proclamations et votre historique seront supprimés définitivement, sur cet appareil et dans le cloud. Cette action est irréversible."
+                        } else {
+                            "Your account, proclamations and history will be permanently deleted, on this device and in the cloud. This cannot be undone."
+                        },
                         style = MaterialTheme.typography.bodyMedium.copy(color = TextDark)
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    androidx.compose.material3.OutlinedTextField(
-                        value = adminPasscodeInput,
-                        onValueChange = {
-                            adminPasscodeInput = it
-                            adminPasscodeError = false
-                        },
-                        label = { Text(if (isFr) "Code secret admin" else "Admin Passcode") },
-                        singleLine = true,
-                        isError = adminPasscodeError,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (adminPasscodeError) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                    deleteAccountError?.let { message ->
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (isFr) "Code d'accès incorrect." else "Incorrect passcode.",
+                            text = message,
                             style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.error)
                         )
                     }
@@ -510,29 +510,31 @@ fun UserProfileDialog(
             },
             confirmButton = {
                 Button(
+                    enabled = !isDeletingAccount,
                     onClick = {
-                        val success = viewModel.unlockAdminMode(adminPasscodeInput)
-                        if (success) {
-                            showAdminPasscodeDialog = false
-                            adminPasscodeInput = ""
-                            onDismissRequest()
-                            onOpenAdminDashboard()
-                        } else {
-                            adminPasscodeError = true
+                        isDeletingAccount = true
+                        viewModel.deleteAccount { error ->
+                            isDeletingAccount = false
+                            if (error == null) {
+                                showDeleteAccountConfirm = false
+                                onDismissRequest()
+                            } else {
+                                deleteAccountError = error
+                            }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DeepNavy, contentColor = SoftGold)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = PureWhite
+                    )
                 ) {
-                    Text(if (isFr) "Déverrouiller" else "Unlock")
+                    Text(if (isFr) "Supprimer" else "Delete")
                 }
             },
             dismissButton = {
                 TextButton(
-                    onClick = {
-                        showAdminPasscodeDialog = false
-                        adminPasscodeError = false
-                        adminPasscodeInput = ""
-                    }
+                    enabled = !isDeletingAccount,
+                    onClick = { showDeleteAccountConfirm = false }
                 ) {
                     Text(if (isFr) "Annuler" else "Cancel", color = TextDark)
                 }

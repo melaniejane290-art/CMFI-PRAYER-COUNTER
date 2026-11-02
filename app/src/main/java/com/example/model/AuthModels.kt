@@ -15,9 +15,7 @@ data class UserAccount(
     val lastSignInTimestamp: Long = 0L
 ) {
     val isAdmin: Boolean
-        get() = role.equals("admin", ignoreCase = true) ||
-                email?.lowercase()?.contains("admin") == true ||
-                email.equals("melaniejane290@gmail.com", ignoreCase = true)
+        get() = role.equals("admin", ignoreCase = true)
 
     val displayTitle: String
         get() = displayName?.takeIf { it.isNotBlank() }
@@ -41,6 +39,11 @@ data class UserAccount(
             }
             return "✝️"
         }
+
+    companion object {
+        /** Only this address, once verified by Firebase, gets the admin role. */
+        const val ADMIN_EMAIL = "melaniejane290@gmail.com"
+    }
 }
 
 /**

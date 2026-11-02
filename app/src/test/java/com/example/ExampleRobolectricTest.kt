@@ -264,13 +264,15 @@ class ExampleRobolectricTest {
     val context = ApplicationProvider.getApplicationContext<android.app.Application>()
     val authRepo = com.example.data.repository.AuthRepository(context)
 
-    // Admin account sign in
-    val adminResult = authRepo.signInWithEmail("melaniejane290@gmail.com", "securepass")
-    assertTrue(adminResult.isSuccess)
-    val admin = adminResult.getOrNull()
-    assertNotNull(admin)
-    assertTrue(admin?.isAdmin == true)
-    assertEquals("admin", admin?.role)
+    // A local account never becomes admin, whatever its address
+    for (email in listOf(com.example.model.UserAccount.ADMIN_EMAIL, "admin.team@example.com")) {
+      val local = authRepo.signUpWithEmail(email, "securepass", "Someone").getOrNull()
+      assertNotNull(local)
+      assertFalse(local?.isAdmin == true)
+      authRepo.signOut()
+      // ...and its password is really checked
+      assertTrue(authRepo.signInWithEmail(email, "other-password").isFailure)
+    }
 
     // Devotee account sign in
     val devoteeResult = authRepo.signUpWithEmail("devotee.member@example.com", "mypassword123", "Brother Paul")
@@ -282,9 +284,9 @@ class ExampleRobolectricTest {
 
     // ViewModel Admin Access Check
     val viewModel = PrayerCounterViewModel(context)
-    viewModel.signInWithEmail("melaniejane290@gmail.com", "securepass")
-    assertTrue(viewModel.checkAdminAccess())
-    assertTrue(viewModel.isAdminUnlocked.value)
+    viewModel.signInWithEmail(com.example.model.UserAccount.ADMIN_EMAIL, "securepass")
+    assertFalse(viewModel.checkAdminAccess())
+    assertFalse(viewModel.isAdminUnlocked.value)
   }
 
   @Test

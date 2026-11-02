@@ -16,6 +16,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
@@ -25,6 +26,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -108,7 +111,15 @@ class AuthRepository(
             trySend(localAccountStore?.getActiveUser())
         }
 
+        // Local sign-ins and sign-outs never fire the Firebase listener.
+        val localUpdates = launch {
+            _localUserFlow.drop(1).collect { local ->
+                trySend(auth?.currentUser?.toUserAccount() ?: local)
+            }
+        }
+
         awaitClose {
+            localUpdates.cancel()
             auth?.removeAuthStateListener(listener)
         }
     }
@@ -165,9 +176,6 @@ class AuthRepository(
                 val userDisplayName = googleIdTokenCredential.displayName?.takeIf { it.isNotBlank() }
                     ?: googleEmail.substringBefore("@").replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
-                val role = if (googleEmail.equals("melaniejane290@gmail.com", ignoreCase = true) ||
-                    googleEmail.contains("admin", ignoreCase = true)) "admin" else "devotee"
-
                 if (auth != null) {
                     try {
                         val authCredential = GoogleAuthProvider.getCredential(googleIdTokenCredential.idToken, null)
@@ -178,8 +186,7 @@ class AuthRepository(
                         if (user != null) {
                             val finalUser = user.copy(
                                 email = googleEmail,
-                                displayName = user.displayName?.takeIf { it.isNotBlank() } ?: userDisplayName,
-                                role = role
+                                displayName = user.displayName?.takeIf { it.isNotBlank() } ?: userDisplayName
                             )
                             localAccountStore?.saveUser(finalUser, "")
                             localAccountStore?.setActiveUser(finalUser)
@@ -199,7 +206,7 @@ class AuthRepository(
                     photoUrl = googleIdTokenCredential.profilePictureUri?.toString(),
                     isAnonymous = false,
                     providerId = "google.com",
-                    role = role,
+                    role = "devotee",
                     creationTimestamp = System.currentTimeMillis(),
                     lastSignInTimestamp = System.currentTimeMillis()
                 )
@@ -240,47 +247,34 @@ class AuthRepository(
             } catch (e: Exception) {
                 if (!isApiKeyOrConfigError(e)) {
                     // Check if it's invalid password or user not found in local store
-                    val localMatch = localAccountStore?.findUserByEmail(trimmedEmail)
-                    if (localMatch != null) {
-                        val isSeedAdmin = trimmedEmail.equals("melaniejane290@gmail.com", ignoreCase = true)
-                        if (isSeedAdmin || localMatch.second == pass || localMatch.second.isBlank()) {
-                            val updatedUser = localMatch.first.copy(lastSignInTimestamp = System.currentTimeMillis())
-                            if (isSeedAdmin && localMatch.second != pass) {
-                                localAccountStore?.saveUser(updatedUser, pass)
-                            }
-                            localAccountStore?.setActiveUser(updatedUser)
-                            _localUserFlow.value = updatedUser
-                            return Result.success(updatedUser)
-                        } else {
-                            return Result.failure(Exception("Incorrect password."))
-                        }
-                    }
+                    signInLocally(trimmedEmail, pass)?.let { return it }
                 }
             }
         }
 
         // Check Local Account Store
-        val localMatch = localAccountStore?.findUserByEmail(trimmedEmail)
-        if (localMatch != null) {
-            val isSeedAdmin = trimmedEmail.equals("melaniejane290@gmail.com", ignoreCase = true)
-            if (isSeedAdmin || localMatch.second == pass || localMatch.second.isBlank()) {
-                val updatedUser = localMatch.first.copy(lastSignInTimestamp = System.currentTimeMillis())
-                if (isSeedAdmin && localMatch.second != pass) {
-                    localAccountStore?.saveUser(updatedUser, pass)
-                }
-                localAccountStore?.setActiveUser(updatedUser)
-                _localUserFlow.value = updatedUser
-                return Result.success(updatedUser)
-            } else {
-                return Result.failure(Exception("Incorrect password."))
-            }
-        }
+        signInLocally(trimmedEmail, pass)?.let { return it }
 
         // If not found in local store, automatically register the new devotee with this email so they can sign in seamlessly!
         val defaultName = trimmedEmail.substringBefore("@")
             .replace(".", " ")
             .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
         return signUpWithEmail(trimmedEmail, pass, defaultName)
+    }
+
+    /**
+     * Opens an account of the local store, or returns null if this email has none.
+     */
+    private fun signInLocally(email: String, pass: String): Result<UserAccount>? {
+        val store = localAccountStore ?: return null
+        val localMatch = store.findUserByEmail(email) ?: return null
+        if (!store.passwordMatches(localMatch.second, pass)) {
+            return Result.failure(Exception("Incorrect password."))
+        }
+        val updatedUser = localMatch.first.copy(lastSignInTimestamp = System.currentTimeMillis())
+        store.setActiveUser(updatedUser)
+        _localUserFlow.value = updatedUser
+        return Result.success(updatedUser)
     }
 
     /**
@@ -298,9 +292,6 @@ class AuthRepository(
                 .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
         }
         val auth = ensureFirebaseAuth()
-
-        val role = if (trimmedEmail.contains("admin", ignoreCase = true) ||
-            trimmedEmail.equals("melaniejane290@gmail.com", ignoreCase = true)) "admin" else "devotee"
 
         if (auth != null) {
             try {
@@ -321,7 +312,6 @@ class AuthRepository(
                         }
                     }
                     val user = (auth.currentUser?.toUserAccount() ?: firebaseUser.toUserAccount()).copy(
-                        role = role,
                         displayName = cleanName
                     )
                     localAccountStore?.saveUser(user, pass)
@@ -342,7 +332,7 @@ class AuthRepository(
             photoUrl = null,
             isAnonymous = false,
             providerId = "password",
-            role = role,
+            role = "devotee",
             creationTimestamp = System.currentTimeMillis(),
             lastSignInTimestamp = System.currentTimeMillis()
         )
@@ -386,6 +376,24 @@ class AuthRepository(
         _localUserFlow.value = null
     }
 
+    /**
+     * Deletes the Firebase account, if any, and the local account of the current user.
+     * Firebase refuses when the last sign-in is too old: the local account is then kept.
+     */
+    suspend fun deleteCurrentAccount(): Result<Unit> {
+        val email = getCurrentUser()?.email
+        try {
+            ensureFirebaseAuth()?.currentUser?.delete()?.await()
+        } catch (e: FirebaseAuthRecentLoginRequiredException) {
+            return Result.failure(e)
+        } catch (e: Exception) {
+            return Result.failure(e)
+        }
+        localAccountStore?.removeUser(email)
+        signOut()
+        return Result.success(Unit)
+    }
+
     private fun isApiKeyOrConfigError(e: Throwable): Boolean {
         val msg = (e.localizedMessage ?: "") + (e.message ?: "")
         return msg.contains("API key", ignoreCase = true) ||
@@ -399,7 +407,7 @@ class AuthRepository(
 
     private fun FirebaseUser.toUserAccount(): UserAccount {
         val mail = email
-        val calculatedRole = if (mail != null && (mail.contains("admin", ignoreCase = true) || mail.equals("melaniejane290@gmail.com", ignoreCase = true))) {
+        val calculatedRole = if (isEmailVerified && mail.equals(UserAccount.ADMIN_EMAIL, ignoreCase = true)) {
             "admin"
         } else {
             "devotee"

@@ -1,0 +1,67 @@
+name: iOS TestFlight
+
+# Même chaîne qu'EFDET et Dabar : signature via l'API App Store Connect,
+# puis envoi sur TestFlight. Aucune soumission à la revue n'est faite ici.
+# L'application doit exister dans App Store Connect avec ce Bundle ID.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+jobs:
+  testflight:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ios
+    env:
+      BUNDLE_ID: cmfi.prayercounter.org
+      BUILD_NUMBER: ${{ github.run_number }}
+      IOS_BUILD_NUMBER: ${{ github.run_number }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.APP_STORE_CONNECT_KEY_IDENTIFIER }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      CERTIFICATE_PRIVATE_KEY: ${{ secrets.CERTIFICATE_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check signing secrets
+        run: |
+          for name in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_IDENTIFIER APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
+            test -n "${!name}" || { echo "::error::Missing $name"; exit 1; }
+          done
+      - name: Select Xcode
+        run: |
+          recent=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$recent/Contents/Developer"
+          xcodebuild -version
+      - name: Dependencies
+        run: |
+          brew install xcodegen
+          python3 -m pip install --quiet --break-system-packages codemagic-cli-tools PyJWT cryptography requests
+      - name: Generate project
+        run: xcodegen generate
+      - name: Sign
+        run: |
+          printf '%s' "$CERTIFICATE_PRIVATE_KEY" > "$RUNNER_TEMP/cert_key.pem"
+          chmod 600 "$RUNNER_TEMP/cert_key.pem"
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create --certificate-key "@file:$RUNNER_TEMP/cert_key.pem"
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Build IPA
+        run: xcode-project build-ipa --project PrayerCounter.xcodeproj --scheme PrayerCounter
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prayer-counter-ios-${{ github.run_number }}
+          path: ios/build/ios/ipa/*.ipa
+          retention-days: 3
+      - name: Upload to TestFlight
+        run: app-store-connect publish --path "build/ios/ipa/*.ipa"
+      - name: Verify Apple processing
+        run: python3 ../scripts/verify_apple_build.py
+      - name: Clean signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/cert_key.pem"
