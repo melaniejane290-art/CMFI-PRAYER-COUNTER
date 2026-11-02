@@ -242,6 +242,55 @@ final class PrayerStore: ObservableObject {
         )
     }
 
+    // MARK: Store screenshots
+
+    #if DEBUG
+    /// Sample content for the App Store screenshots; never compiled into a release build.
+    static func demo(language: AppLanguage) -> PrayerStore {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("prayer-demo-\(UUID().uuidString).json")
+        let store = PrayerStore(fileURL: file)
+        store.language = language
+        let topics = language.presetTopics
+        store.prayerTopic = topics[0]
+        store.targetCount = 1000
+        store.savedCumulativeCount = 640
+        store.currentSessionCount = 47
+        store.sessionDurationSeconds = 754
+        store.isTimerRunning = true
+
+        let code = language.rawValue
+        let plan = [(0, 0, 180, 1260), (1, 1, 240, 1500), (2, 2, 120, 840), (3, 3, 300, 1980), (4, 4, 150, 960), (6, 0, 90, 600)]
+        store.sessions = plan.map { days, topic, count, seconds in
+            PrayerSessionRecord(
+                topic: topics[topic],
+                sessionCount: count,
+                durationSeconds: seconds,
+                targetCount: 1000,
+                timestamp: Date().addingTimeInterval(Double(-days) * 86_400 - 3_600),
+                languageCode: code,
+                isTargetReached: false
+            )
+        }
+        store.proclamations = [
+            SavedProclamation(
+                topic: topics[0], proclamationCount: 1000, durationSeconds: 2_460, targetCount: 1000, languageCode: code,
+                notes: store.text("Philippians 2:11. A time of great peace.", "Philippiens 2:11. Un temps de grande paix."),
+                timestamp: Date().addingTimeInterval(-86_400), isTargetCompleted: true
+            ),
+            SavedProclamation(
+                topic: topics[2], proclamationCount: 500, durationSeconds: 1_500, targetCount: 500, languageCode: code,
+                notes: store.text("Isaiah 53:5.", "Ésaïe 53:5."),
+                timestamp: Date().addingTimeInterval(-259_200), isTargetCompleted: true
+            ),
+            SavedProclamation(
+                topic: topics[1], proclamationCount: 320, durationSeconds: 960, targetCount: 1000, languageCode: code,
+                timestamp: Date().addingTimeInterval(-432_000), isTargetCompleted: false
+            )
+        ]
+        return store
+    }
+    #endif
+
     // MARK: Persistence
 
     private func persist() {

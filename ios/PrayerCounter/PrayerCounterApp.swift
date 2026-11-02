@@ -2,7 +2,17 @@ import SwiftUI
 
 @main
 struct PrayerCounterApp: App {
-    @StateObject private var store = PrayerStore()
+    @StateObject private var store: PrayerStore
+
+    init() {
+        #if DEBUG
+        if let code = UserDefaults.standard.string(forKey: "demoLang"), let language = AppLanguage(rawValue: code) {
+            _store = StateObject(wrappedValue: PrayerStore.demo(language: language))
+            return
+        }
+        #endif
+        _store = StateObject(wrappedValue: PrayerStore())
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -29,5 +39,14 @@ struct RootView: View {
                 .tabItem { Label(store.text("History", "Historique"), systemImage: "clock.fill") }
                 .tag(2)
         }
+        #if DEBUG
+        .onAppear {
+            switch UserDefaults.standard.string(forKey: "demoScreen") {
+            case "saved": selectedTab = 1
+            case "history": selectedTab = 2
+            default: selectedTab = 0
+            }
+        }
+        #endif
     }
 }

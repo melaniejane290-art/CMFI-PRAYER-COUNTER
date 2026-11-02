@@ -36,6 +36,15 @@ struct CounterView: View {
                     }
                 }
             }
+            #if DEBUG
+            .onAppear {
+                switch UserDefaults.standard.string(forKey: "demoScreen") {
+                case "topic": showTopicEditor = true
+                case "target": showTargetEditor = true
+                default: break
+                }
+            }
+            #endif
             .sheet(isPresented: $showTopicEditor) { TopicEditor() }
             .sheet(isPresented: $showTargetEditor) { TargetEditor() }
             .confirmationDialog(

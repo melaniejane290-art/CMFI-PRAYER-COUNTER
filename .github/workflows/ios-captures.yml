@@ -1,0 +1,62 @@
+name: iOS captures
+
+# Prend les vraies captures de l'app sur simulateur, en anglais et en français,
+# avec le contenu de démonstration du build debug. Les visuels finaux sont
+# ensuite composés par scripts/compose_store_images.py.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  captures:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: ios
+    env:
+      BUILD_NUMBER: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          recent=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$recent/Contents/Developer"
+          xcodebuild -version
+      - name: Build for simulator
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild -project PrayerCounter.xcodeproj -scheme PrayerCounter -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO build
+      - name: Take captures
+        run: |
+          APP=build/dd/Build/Products/Debug-iphonesimulator/PrayerCounter.app
+          shoot() {
+            device_name=$(xcrun simctl list devices available | grep -E "$2" | sort -V | tail -1 | sed -E 's/^ *//; s/ \([0-9A-F-]{36}\).*//')
+            udid=$(xcrun simctl list devices available | grep -F "$device_name (" | tail -1 | grep -oE '[0-9A-F-]{36}')
+            echo "$1 -> $device_name ($udid)"
+            xcrun simctl boot "$udid"
+            xcrun simctl bootstatus "$udid" -b >/dev/null
+            xcrun simctl status_bar "$udid" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+            xcrun simctl install "$udid" "$APP"
+            for lang in en fr; do
+              mkdir -p "captures/$1/$lang"
+              for screen in counter topic target saved history; do
+                xcrun simctl terminate "$udid" cmfi.prayercounter.org 2>/dev/null || true
+                xcrun simctl launch "$udid" cmfi.prayercounter.org -demoLang "$lang" -demoScreen "$screen" \
+                  -AppleLanguages "($lang)" -AppleLocale "$lang" >/dev/null
+                sleep 5
+                xcrun simctl io "$udid" screenshot "captures/$1/$lang/$screen.png"
+              done
+            done
+            xcrun simctl shutdown "$udid"
+          }
+          shoot iphone 'iPhone [0-9]+ Pro Max'
+          shoot ipad 'iPad Pro 13'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-captures
+          path: ios/captures
+          retention-days: 7
